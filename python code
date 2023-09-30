@@ -1,0 +1,56 @@
+import pandas as pd
+import numpy as np
+
+def analyze_excel_file(file_path):
+  # Read the Excel file into a DataFrame
+  df = pd.read_excel(file_path)
+
+  # Convert the Time and Time Out columns to datetime objects
+  df['Time'] = pd.to_datetime(df['Time'])
+  df['Time Out'] = pd.to_datetime(df['Time Out'])
+
+  # Calculate the duration of each shift
+  df['Shift duration'] = df['Time Out'] - df['Time']
+
+  # Find employees who have worked for more than 14 hours in a single shift
+  employees_who_worked_for_more_than_14_hours_in_a_single_shift = set()
+  for employee_name, group_df in df.groupby('Employee Name'):
+    if group_df['Shift duration'].max() > pd.Timedelta(hours=14):
+      employees_who_worked_for_more_than_14_hours_in_a_single_shift.add(employee_name)
+
+  # Find employees with less than 10 hours between shifts but greater than 1 hour
+  df['Time Between Shifts'] = df.groupby('Employee Name')['Time'].diff().dt.total_seconds() / 3600
+  less_than_10_hours_between_shifts = df[(df['Time Between Shifts'] < 10) & (df['Time Between Shifts'] > 1)]
+
+  # Find employees who have worked for 7 consecutive days
+  employees_who_worked_for_7_consecutive_days = set()
+  for employee_name, group_df in df.groupby('Employee Name'):
+    consecutive_days = group_df['Time'].diff().dt.total_seconds() / (3600 * 24)
+    if any(consecutive_days.fillna(0).rolling(window=7).sum() == 7):
+      employees_who_worked_for_7_consecutive_days.add(employee_name)
+
+  # Print the results to the console
+  print("Employees who have worked for more than 14 hours in a single shift:")
+  if employees_who_worked_for_more_than_14_hours_in_a_single_shift:
+    for employee_name in employees_who_worked_for_more_than_14_hours_in_a_single_shift:
+      print(f'* {employee_name}')
+  else:
+    print("None")
+
+  print("\nEmployees with less than 10 hours between shifts but greater than 1 hour:")
+  if not less_than_10_hours_between_shifts.empty:
+    for employee_name in less_than_10_hours_between_shifts['Employee Name'].unique():
+      print(f'* {employee_name}')
+  else:
+    print("None")
+
+  print("\nEmployees who have worked for 7 consecutive days:")
+  if employees_who_worked_for_7_consecutive_days:
+    for employee_name in employees_who_worked_for_7_consecutive_days:
+      print(f'* {employee_name}')
+  else:
+    print("None")
+
+# Replace with the path to your Excel file (xlsx format)
+file_path = '/content/drive/MyDrive/Assignment_Timecard (1) 2.xlsx'
+analyze_excel_file(file_path)
